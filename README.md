@@ -51,7 +51,7 @@ A V2board node server based on multi core, modified from XrayR.
 wget -N https://raw.githubusercontent.com/Cosdyan/V2bX/dev_new/install.sh && bash install.sh
 ```
 
-使用本 Fork 的最新 Linux AMD64 / ARM64 构建，安装前请先确认 [Fork Linux Release](https://github.com/Cosdyan/V2bX/actions/workflows/fork-release.yml) 已成功执行并发布 [latest Release](https://github.com/Cosdyan/V2bX/releases)。首次安装需要编辑 `/etc/V2bX/config.json`。已有配置不会被安装脚本覆盖。\n\n安装后可使用 `V2bX` 或 `v2bx` 打开管理菜单，也可运行 `V2bX start|stop|restart|status|log|update|uninstall`。管理命令与一键安装均从 `Cosdyan/V2bX` 获取代码及 Release，更新时保留 `/etc/V2bX` 配置。当前自动构建支持 Linux AMD64/ARM64，安装管理依赖 systemd。\n\n### 手动安装
+使用本 Fork 的最新 Linux AMD64 / ARM64 构建，安装前请先确认 [Fork Linux Release](https://github.com/Cosdyan/V2bX/actions/workflows/fork-release.yml) 已成功执行并发布 [latest Release](https://github.com/Cosdyan/V2bX/releases)。首次安装需要编辑 `/etc/V2bX/config.json`。已有配置不会被安装脚本覆盖。\n\n安装后直接输入 **`v2bx`** 即可打开 0–17 交互管理菜单（兼容 `V2bX`），也可运行 `V2bX start|stop|restart|status|log|update|uninstall`。管理命令与一键安装均从 `Cosdyan/V2bX` 获取代码及 Release，更新时保留 `/etc/V2bX` 配置。当前自动构建支持 Linux AMD64/ARM64，安装管理依赖 systemd。\n\n### 手动安装
 
 [手动安装教程](https://v2bx.v-50.me/v2bx/v2bx-xia-zai-he-an-zhuang/install/manual)
 
