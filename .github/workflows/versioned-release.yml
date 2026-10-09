@@ -1,0 +1,75 @@
+name: V2bX v0.4.0 Fork Release
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [v0.4.0-cosdyan]
+    paths:
+      - '**/*.go'
+      - go.mod
+      - go.sum
+      - install.sh
+      - '.github/workflows/versioned-release.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: v0.4.0-fork-release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goarch: amd64
+            asset: linux-64
+          - goarch: arm64
+            asset: linux-arm64-v8a
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.2'
+          cache: true
+      - name: Compile
+        env:
+          GOOS: linux
+          CGO_ENABLED: '0'
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          mkdir -p dist
+          go build -v -o dist/V2bX -tags "sing xray hysteria2 with_reality_server with_quic with_grpc with_utls with_wireguard with_acme" -trimpath -ldflags "-s -w -buildid=" .
+          cp README.md LICENSE dist/
+          cp example/*.json dist/
+          curl -fL --retry 3 https://raw.githubusercontent.com/Loyalsoldier/v2ray-rules-dat/release/geoip.dat -o dist/geoip.dat
+          curl -fL --retry 3 https://raw.githubusercontent.com/Loyalsoldier/v2ray-rules-dat/release/geosite.dat -o dist/geosite.dat
+          (cd dist && zip -q -r ../V2bX-${{ matrix.asset }}.zip .)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: V2bX-${{ matrix.asset }}
+          path: V2bX-${{ matrix.asset }}.zip
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: V2bX-linux-*
+          merge-multiple: true
+          path: release-assets
+      - name: Create/update rolling latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if gh release view v0.4.0-cosdyan >/dev/null 2>&1; then
+            gh release upload v0.4.0-cosdyan release-assets/*.zip --clobber
+          else
+            gh release create v0.4.0-cosdyan release-assets/*.zip --target "${GITHUB_SHA}" --title "V2bX v0.4.0 - Cosdyan build" --notes "Built from upstream v0.4.0 commit 3deccaae with independent installer and menu."
+          fi
