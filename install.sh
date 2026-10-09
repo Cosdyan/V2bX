@@ -79,4 +79,4 @@ if [[ -s "$CONFIG_DIR/config.json" ]]; then
 else
   echo "安装完毕, 请先创建 $CONFIG_DIR/config.json"
 fi
-echo "管理命令: V2bX 或 v2bx | V2bX start / stop / restart / status / log / update / uninstall"
+echo "默认管理入口: v2bx（直接输入即可显示 0–17 菜单）"\necho "快捷命令: v2bx start | stop | restart | status | log | update | uninstall"\necho "兼容命令: V2bX"
