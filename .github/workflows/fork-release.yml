@@ -43,7 +43,7 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
         run: |
           mkdir -p dist
-          go build -v -o dist/V2bX -tags "sing xray hysteria2 with_reality_server with_quic with_grpc with_utls with_wireguard with_acme" -trimpath -ldflags "-s -w -buildid=" .
+          go build -v -o dist/V2bX -tags "sing xray hysteria2 with_quic with_grpc with_utls with_wireguard with_acme" -trimpath -ldflags "-s -w -buildid=" .
           cp README.md LICENSE dist/
           cp example/*.json dist/
           curl -fL --retry 3 https://raw.githubusercontent.com/Loyalsoldier/v2ray-rules-dat/release/geoip.dat -o dist/geoip.dat
