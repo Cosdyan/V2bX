@@ -23,7 +23,7 @@ install_deps(){
 }
 for bin in wget curl unzip; do command -v "$bin" >/dev/null 2>&1 || { install_deps; break; }; done
 command -v systemctl >/dev/null 2>&1 || { echo "此安装器需要 systemd; Alpine/OpenRC 暂不支持" >&2; exit 1; }
-VERSION="${1:-v0.4.0-cosdyan}"
+VERSION="${1:-latest}"
 if [[ "$VERSION" != "latest" && ! "$VERSION" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then echo "无效版本名称" >&2; exit 1; fi
 URL="https://github.com/${REPO}/releases/download/${VERSION}/V2bX-linux-${ARCH}.zip"
 TMP="$(mktemp -d)"
