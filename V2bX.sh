@@ -83,7 +83,7 @@ run(){
  case "$1" in
   0|config) config ;;
   1|install) root && fetch_and_run ;;
-  2|update) root && fetch_and_run "${2:-latest}" ;;
+  2|update) root && fetch_and_run "${2:-v0.4.0-cosdyan}" ;;
   3|uninstall) uninstall ;;
   4|start) installed && manage start ;;
   5|stop) installed && manage stop ;;

@@ -2,8 +2,12 @@ package panel
 
 import (
 	"fmt"
+	"strings"
 
-	"github.com/goccy/go-json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
+
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 type OnlineUser struct {
@@ -12,15 +16,14 @@ type OnlineUser struct {
 }
 
 type UserInfo struct {
-	Id          int    `json:"id"`
-	Uuid        string `json:"uuid"`
-	SpeedLimit  int    `json:"speed_limit"`
-	DeviceLimit int    `json:"device_limit"`
+	Id          int    `json:"id" msgpack:"id"`
+	Uuid        string `json:"uuid" msgpack:"uuid"`
+	SpeedLimit  int    `json:"speed_limit" msgpack:"speed_limit"`
+	DeviceLimit int    `json:"device_limit" msgpack:"device_limit"`
 }
 
 type UserListBody struct {
-	//Msg  string `json:"msg"`
-	Users []UserInfo `json:"users"`
+	Users []UserInfo `json:"users" msgpack:"users"`
 }
 
 type AliveMap struct {
@@ -32,7 +35,8 @@ func (c *Client) GetUserList() ([]UserInfo, error) {
 	const path = "/api/v1/server/UniProxy/user"
 	r, err := c.client.R().
 		SetHeader("If-None-Match", c.userEtag).
-		ForceContentType("application/json").
+		SetHeader("X-Response-Format", "msgpack").
+		SetDoNotParseResponse(true).
 		Get(path)
 	if r == nil || r.RawResponse == nil {
 		return nil, fmt.Errorf("received nil response or raw response")
@@ -47,8 +51,40 @@ func (c *Client) GetUserList() ([]UserInfo, error) {
 		return nil, err
 	}
 	userlist := &UserListBody{}
-	if err := json.Unmarshal(r.Body(), userlist); err != nil {
-		return nil, fmt.Errorf("unmarshal user list error: %w", err)
+	if strings.Contains(r.Header().Get("Content-Type"), "application/x-msgpack") {
+		decoder := msgpack.NewDecoder(r.RawResponse.Body)
+		if err := decoder.Decode(userlist); err != nil {
+			return nil, fmt.Errorf("decode user list error: %w", err)
+		}
+	} else {
+		dec := jsontext.NewDecoder(r.RawResponse.Body)
+		for {
+			tok, err := dec.ReadToken()
+			if err != nil {
+				return nil, fmt.Errorf("decode user list error: %w", err)
+			}
+			if tok.Kind() == '"' && tok.String() == "users" {
+				break
+			}
+		}
+		tok, err := dec.ReadToken()
+		if err != nil {
+			return nil, fmt.Errorf("decode user list error: %w", err)
+		}
+		if tok.Kind() != '[' {
+			return nil, fmt.Errorf(`decode user list error: expected "users" array`)
+		}
+		for dec.PeekKind() != ']' {
+			val, err := dec.ReadValue()
+			if err != nil {
+				return nil, fmt.Errorf("decode user list error: read user object: %w", err)
+			}
+			var u UserInfo
+			if err := json.Unmarshal(val, &u); err != nil {
+				return nil, fmt.Errorf("decode user list error: unmarshal user error: %w", err)
+			}
+			userlist.Users = append(userlist.Users, u)
+		}
 	}
 	c.userEtag = r.Header().Get("ETag")
 	return userlist.Users, nil
@@ -63,10 +99,12 @@ func (c *Client) GetUserAlive() (map[int]int, error) {
 		Get(path)
 	if err != nil || r.StatusCode() >= 399 {
 		c.AliveMap.Alive = make(map[int]int)
+		return c.AliveMap.Alive, nil
 	}
 	if r == nil || r.RawResponse == nil {
 		fmt.Printf("received nil response or raw response")
 		c.AliveMap.Alive = make(map[int]int)
+		return c.AliveMap.Alive, nil
 	}
 	defer r.RawResponse.Body.Close()
 	if err := json.Unmarshal(r.Body(), c.AliveMap); err != nil {

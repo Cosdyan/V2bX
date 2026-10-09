@@ -18,6 +18,8 @@ import (
 	"github.com/apernet/hysteria/extras/v2/masq"
 	"github.com/apernet/hysteria/extras/v2/obfs"
 	"github.com/apernet/hysteria/extras/v2/outbounds"
+	"github.com/apernet/hysteria/extras/v2/sniff"
+	eUtils "github.com/apernet/hysteria/extras/v2/utils"
 	"go.uber.org/zap"
 )
 
@@ -161,6 +163,29 @@ func (n *Hysteria2node) getBandwidthConfig(info *panel.NodeInfo) *server.Bandwid
 	return band
 }
 
+func (n *Hysteria2node) getRequestHook(c *serverConfig) (server.RequestHook, error) {
+	if c.Sniff.Enable {
+		s := &sniff.Sniffer{
+			Timeout:       c.Sniff.Timeout,
+			RewriteDomain: c.Sniff.RewriteDomain,
+		}
+		if c.Sniff.TCPPorts != "" {
+			s.TCPPorts = eUtils.ParsePortUnion(c.Sniff.TCPPorts)
+			if s.TCPPorts == nil {
+				return nil, fmt.Errorf("sniff.tcpPorts: invalid port union")
+			}
+		}
+		if c.Sniff.UDPPorts != "" {
+			s.UDPPorts = eUtils.ParsePortUnion(c.Sniff.UDPPorts)
+			if s.UDPPorts == nil {
+				return nil, fmt.Errorf("sniff.udpPorts: invalid port union")
+			}
+		}
+		return s, nil
+	}
+	return nil, nil
+}
+
 func (n *Hysteria2node) getOutboundConfig(c *serverConfig) (server.Outbound, error) {
 	// Resolver, ACL, actual outbound are all implemented through the Outbound interface.
 	// Depending on the config, we build a chain like this:
@@ -299,7 +324,7 @@ func (n *Hysteria2node) getMasqHandler(tlsconfig *server.TLSConfig, conn net.Pac
 					req.Header.Set("X-Forwarded-For", clientIP)
 				}
 
-				if !c.Masquerade.Proxy.RewriteHost {
+				if c.Masquerade.Proxy.RewriteHost {
 					req.Host = req.URL.Host
 				}
 			},
@@ -342,7 +367,7 @@ func (n *Hysteria2node) getMasqHandler(tlsconfig *server.TLSConfig, conn net.Pac
 		s := masq.MasqTCPServer{
 			QUICPort:  extractPortFromAddr(conn.LocalAddr().String()),
 			HTTPSPort: extractPortFromAddr(c.Masquerade.ListenHTTPS),
-			Handler:   &masqHandlerLogWrapper{H: handler, QUIC: false},
+			Handler:   &masqHandlerLogWrapper{H: handler, QUIC: false, Logger: n.Logger},
 			TLSConfig: &tls.Config{
 				Certificates:   tlsconfig.Certificates,
 				GetCertificate: tlsconfig.GetCertificate,
@@ -368,6 +393,10 @@ func (n *Hysteria2node) getHyConfig(info *panel.NodeInfo, config *conf.Options, 
 	if err != nil {
 		return nil, err
 	}
+	sniff, err := n.getRequestHook(c)
+	if err != nil {
+		return nil, err
+	}
 	Outbound, err := n.getOutboundConfig(c)
 	if err != nil {
 		return nil, err
@@ -380,9 +409,10 @@ func (n *Hysteria2node) getHyConfig(info *panel.NodeInfo, config *conf.Options, 
 		TLSConfig:             *tls,
 		QUICConfig:            *quic,
 		Conn:                  conn,
+		RequestHook:           sniff,
 		Outbound:              Outbound,
 		BandwidthConfig:       *n.getBandwidthConfig(info),
-		IgnoreClientBandwidth: c.IgnoreClientBandwidth,
+		IgnoreClientBandwidth: info.Hysteria2.Ignore_Client_Bandwidth,
 		DisableUDP:            c.DisableUDP,
 		UDPIdleTimeout:        c.UDPIdleTimeout,
 		EventLogger:           n.EventLogger,
