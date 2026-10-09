@@ -48,10 +48,10 @@ A V2board node server based on multi core, modified from XrayR.
 ### 一键安装
 
 ```
-wget -N https://raw.githubusercontent.com/wyx2685/V2bX-script/master/install.sh && bash install.sh
+wget -N https://raw.githubusercontent.com/Cosdyan/V2bX/dev_new/install.sh && bash install.sh
 ```
 
-### 手动安装
+使用本 Fork 的最新 Linux AMD64 / ARM64 构建，安装前请先确认 [Fork Linux Release](https://github.com/Cosdyan/V2bX/actions/workflows/fork-release.yml) 已成功执行并发布 [latest Release](https://github.com/Cosdyan/V2bX/releases)。首次安装需要编辑 `/etc/V2bX/config.json`。已有配置不会被安装脚本覆盖。\n\n### 手动安装
 
 [手动安装教程](https://v2bx.v-50.me/v2bx/v2bx-xia-zai-he-an-zhuang/install/manual)
 
