@@ -5,11 +5,12 @@ import (
 	"os"
 	"sync"
 
+	"encoding/json/v2"
+
 	"github.com/InazumaV/V2bX/conf"
 	vCore "github.com/InazumaV/V2bX/core"
 	"github.com/InazumaV/V2bX/core/xray/app/dispatcher"
 	_ "github.com/InazumaV/V2bX/core/xray/distro/all"
-	"github.com/goccy/go-json"
 	log "github.com/sirupsen/logrus"
 	"github.com/xtls/xray-core/app/proxyman"
 	"github.com/xtls/xray-core/app/stats"
@@ -18,7 +19,6 @@ import (
 	"github.com/xtls/xray-core/features/inbound"
 	"github.com/xtls/xray-core/features/outbound"
 	"github.com/xtls/xray-core/features/routing"
-	statsFeature "github.com/xtls/xray-core/features/stats"
 	coreConf "github.com/xtls/xray-core/infra/conf"
 )
 
@@ -30,16 +30,28 @@ func init() {
 
 // Xray Structure
 type Xray struct {
-	access     sync.Mutex
-	Server     *core.Instance
-	ihm        inbound.Manager
-	ohm        outbound.Manager
-	shm        statsFeature.Manager
-	dispatcher *dispatcher.DefaultDispatcher
+	access                    sync.Mutex
+	Server                    *core.Instance
+	ihm                       inbound.Manager
+	ohm                       outbound.Manager
+	dispatcher                *dispatcher.DefaultDispatcher
+	users                     *UserMap
+	nodeReportMinTrafficBytes map[string]int64
+}
+
+type UserMap struct {
+	uidMap  map[string]int
+	mapLock sync.RWMutex
 }
 
 func New(c *conf.CoreConfig) (vCore.Core, error) {
-	return &Xray{Server: getCore(c.XrayConfig)}, nil
+	return &Xray{
+		Server: getCore(c.XrayConfig),
+		users: &UserMap{
+			uidMap: make(map[string]int),
+		},
+		nodeReportMinTrafficBytes: make(map[string]int64),
+	}, nil
 }
 
 func parseConnectionConfig(c *conf.XrayConnectionConfig) (policy *coreConf.Policy) {
@@ -174,7 +186,6 @@ func (c *Xray) Start() error {
 	if err := c.Server.Start(); err != nil {
 		return err
 	}
-	c.shm = c.Server.GetFeature(statsFeature.ManagerType()).(statsFeature.Manager)
 	c.ihm = c.Server.GetFeature(inbound.ManagerType()).(inbound.Manager)
 	c.ohm = c.Server.GetFeature(outbound.ManagerType()).(outbound.Manager)
 	c.dispatcher = c.Server.GetFeature(routing.DispatcherType()).(*dispatcher.DefaultDispatcher)
@@ -187,7 +198,6 @@ func (c *Xray) Close() error {
 	defer c.access.Unlock()
 	c.ihm = nil
 	c.ohm = nil
-	c.shm = nil
 	c.dispatcher = nil
 	err := c.Server.Close()
 	if err != nil {
