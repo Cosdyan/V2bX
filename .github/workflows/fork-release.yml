@@ -39,6 +39,7 @@ jobs:
         env:
           GOOS: linux
           CGO_ENABLED: '0'
+          GOEXPERIMENT: jsonv2
           GOARCH: ${{ matrix.goarch }}
         run: |
           mkdir -p dist
